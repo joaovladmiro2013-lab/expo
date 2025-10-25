@@ -1,97 +1,288 @@
----
-title: Start developing
-description: Make your first change to an Expo project and see it live on your device.
-hideTOC: true
----
+import React, { useState } from "react";
 
-import { ProjectStructure } from '~/scenes/get-started/start-developing/ProjectStructure';
-import { TemplateFeatures } from '~/scenes/get-started/start-developing/TemplateFeatures';
-import { Collapsible } from '~/ui/components/Collapsible';
-import { ContentSpotlight } from '~/ui/components/ContentSpotlight';
-import { Terminal, DiffBlock } from '~/ui/components/Snippet';
-import { Step } from '~/ui/components/Step';
+// Single-file React component for a landing + investment simulator
+// Tailwind CSS classes are used for styling (assumes Tailwind is available in the hosting project).
+// Default export is the app component so this file can be dropped into a React project.
 
-<Step label="1">
-## Start a development server
-To start the development server, run the following command:
+const PLANS = [
+  {
+    id: "bronze",
+    title: "Plano Bronze",
+    min: 5000,
+    max: 49999,
+    monthlyPct: 8,
+    months: 3,
+    description: "Ideal para começar com pouco capital",
+  },
+  {
+    id: "prata",
+    title: "Plano Prata",
+    min: 50000,
+    max: 199999,
+    monthlyPct: 10,
+    months: 4,
+    description: "Bom equilíbrio entre prazo e rendimento",
+  },
+  {
+    id: "ouro",
+    title: "Plano Ouro",
+    min: 200000,
+    max: 499999,
+    monthlyPct: 12,
+    months: 5,
+    description: "Para investidores sérios",
+  },
+  {
+    id: "diamante",
+    title: "Plano Diamante",
+    min: 500000,
+    max: 999999,
+    monthlyPct: 15,
+    months: 6,
+    description: "Rendimentos agressivos para capital médio",
+  },
+  {
+    id: "elite",
+    title: "Plano Elite",
+    min: 1000000,
+    max: 1000000,
+    monthlyPct: 18,
+    months: 6,
+    description: "Máximo capital — máximo retorno",
+  },
+];
 
-<Terminal cmd={['$ npx expo start']} />
+function formatKz(value) {
+  return value.toLocaleString("pt-AO");
+}
 
-</Step>
+function findPlanByAmount(amount) {
+  return PLANS.find((p) => amount >= p.min && amount <= p.max) || null;
+}
 
-<Step label="2">
-## Open the app on your device
+// Calculates two payout modes: monthly payouts vs end-of-term (capital+profit reinvest disabled)
+function calculateReturns(amount, plan, mode = "end") {
+  if (!plan) return null;
+  const monthlyRate = plan.monthlyPct / 100;
+  const months = plan.months;
 
-After running the command above, you will see a QR code in your terminal. Scan this QR code to open the app on your device.
+  if (mode === "monthly") {
+    // monthly payouts: simple interest paid each month
+    const monthlyProfit = amount * monthlyRate;
+    const totalProfit = monthlyProfit * months;
+    const total = amount + totalProfit;
+    return {
+      monthlyProfit,
+      totalProfit,
+      total,
+    };
+  } else {
+    // end-of-term: compound each month -> capital grows each month
+    let capital = amount;
+    for (let i = 0; i < months; i++) {
+      capital = capital * (1 + monthlyRate);
+    }
+    const total = Math.round(capital);
+    const totalProfit = total - amount;
+    return {
+      monthlyProfit: null,
+      totalProfit,
+      total,
+    };
+  }
+}
 
-If you're using an Android Emulator or iOS Simulator, you can press <kbd>a</kbd> or <kbd>i</kbd> respectively to open the app.
+export default function KwanzaInvestApp() {
+  const [amount, setAmount] = useState(5000);
+  const [mode, setMode] = useState("end"); // 'monthly' or 'end'
+  const [selectedPlan, setSelectedPlan] = useState(findPlanByAmount(5000));
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [message, setMessage] = useState("");
 
-<Collapsible summary="Having problems?">
+  const onAmountChange = (v) => {
+    const n = Number(v || 0);
+    setAmount(n);
+    setSelectedPlan(findPlanByAmount(n));
+  };
 
-Make sure you are on the same Wi-Fi network on your computer and your device.
+  const returns = calculateReturns(amount, selectedPlan, mode);
 
-If it still doesn't work, it may be due to the router configuration &mdash; this is common for public networks. You can work around this by choosing the **Tunnel** connection type when starting the development server, then scanning the QR code again.
+  const handleSubscribe = (e) => {
+    e.preventDefault();
+    // placeholder: in production you'd send to an API
+    setMessage(`Obrigado ${name || "investidor"}! Pedido registado. Valor: ${formatKz(amount)} Kz`);
+  };
 
-<Terminal cmd={['$ npx expo start --tunnel']} />
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 text-gray-800">
+      <header className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold">KI</div>
+          <div>
+            <h1 className="text-2xl font-extrabold">Kwanza Invest</h1>
+            <p className="text-sm text-gray-600">Faz o teu dinheiro trabalhar por ti</p>
+          </div>
+        </div>
+        <nav className="hidden md:flex gap-6 items-center text-sm">
+          <a className="hover:underline">Planos</a>
+          <a className="hover:underline">Simulador</a>
+          <a className="hover:underline">Como funciona</a>
+          <a className="bg-indigo-600 text-white px-4 py-2 rounded-lg">Entrar / Registar</a>
+        </nav>
+      </header>
 
-> Using the **Tunnel** connection type will make the app reloads considerably slower than on **LAN** or **Local**, so it's best to avoid tunnel when possible. You may want to install and use an emulator or simulator to speed up development if **Tunnel** is required to access your machine from another device on your network.
+      <main className="max-w-6xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left: Hero & Features */}
+        <section className="lg:col-span-2">
+          <div className="bg-white p-6 rounded-2xl shadow">
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <h2 className="text-3xl font-extrabold">Invista com planos a partir de 5.000 Kz</h2>
+                <p className="mt-2 text-gray-600">Escolha o valor, veja a projeção e registe-se em minutos. Pagamentos seguros via Multicaixa e transferências bancárias.</p>
 
-</Collapsible>
+                <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {PLANS.map((p) => (
+                    <div key={p.id} className="p-3 border rounded-lg">
+                      <h3 className="font-semibold">{p.title}</h3>
+                      <p className="text-xs text-gray-500">{p.description}</p>
+                      <div className="mt-3 text-sm">
+                        <div><strong>Mensal:</strong> {p.monthlyPct}%</div>
+                        <div><strong>Prazo:</strong> {p.months} meses</div>
+                        <div className="text-xs text-gray-600">{formatKz(p.min)} Kz — {formatKz(p.max)} Kz</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-</Step>
+              <div className="w-80 p-4 bg-gradient-to-b from-indigo-50 to-white rounded-xl">
+                <h4 className="font-semibold">Simulador rápido</h4>
+                <div className="mt-3">
+                  <label className="text-xs">Valor (Kz)</label>
+                  <input
+                    type="number"
+                    min={5000}
+                    max={1000000}
+                    value={amount}
+                    onChange={(e) => onAmountChange(e.target.value)}
+                    className="w-full mt-1 p-2 rounded-md border"
+                  />
 
-<Step label="3">
+                  <label className="text-xs mt-3 block">Modo de pagamento</label>
+                  <select value={mode} onChange={(e) => setMode(e.target.value)} className="w-full mt-1 p-2 rounded-md border">
+                    <option value="end">Pagar no final do prazo (composto)</option>
+                    <option value="monthly">Pagamento mensal dos lucros (simples)</option>
+                  </select>
 
-## Make your first change
+                  <div className="mt-4 bg-white p-3 rounded-md border">
+                    <div className="text-sm text-gray-600">Plano sugerido</div>
+                    <div className="font-semibold">{selectedPlan ? selectedPlan.title : "Nenhum plano"}</div>
+                    {returns ? (
+                      <div className="mt-2 text-xs">
+                        {mode === "monthly" ? (
+                          <>
+                            <div>Lucro mensal: {formatKz(Math.round(returns.monthlyProfit || 0))} Kz</div>
+                            <div>Lucro total: {formatKz(Math.round(returns.totalProfit))} Kz</div>
+                            <div>Retorno: {formatKz(Math.round(returns.total))} Kz</div>
+                          </>
+                        ) : (
+                          <>
+                            <div>Lucro total (composto): {formatKz(Math.round(returns.totalProfit))} Kz</div>
+                            <div>Retorno final: {formatKz(Math.round(returns.total))} Kz</div>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="mt-2 text-xs text-red-600">Valor fora do intervalo (5.000 — 1.000.000 Kz)</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
 
-Open the **app/(tabs)/index.tsx** file in your code editor and make a change.
+            <div className="mt-6">
+              <h3 className="font-semibold">Como funciona</h3>
+              <ol className="mt-2 list-decimal list-inside text-sm text-gray-600 space-y-1">
+                <li>Registe-se e deposite o valor via Multicaixa ou transferência.</li>
+                <li>Escolha entre pagamentos mensais dos lucros ou retorno total no final do prazo.</li>
+                <li>Receba comprovativos e relatórios no painel do investidor.</li>
+              </ol>
+            </div>
+          </div>
 
-<DiffBlock
-  raw={`diff --git a/app/(tabs)/index.tsx b/app/(tabs)/index.tsx
-index 45cfa0e..4d1b384 100644
---- a/app/(tabs)/index.tsx
-+++ b/app/(tabs)/index.tsx
-@@ -17,7 +17,7 @@ export default function HomeScreen() {
-      }
-    >
-      <ThemedView style={styles.titleContainer}>
--       <ThemedText type="title">Welcome!</ThemedText>
-+       <ThemedText type="title">Hello World!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-  `}
-/>
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 bg-white rounded-xl shadow">
+              <h4 className="font-semibold">Segurança</h4>
+              <p className="text-sm text-gray-600 mt-2">Reserva de capital, contratos digitais e auditorias periódicas.</p>
+            </div>
+            <div className="p-4 bg-white rounded-xl shadow">
+              <h4 className="font-semibold">Suporte</h4>
+              <p className="text-sm text-gray-600 mt-2">WhatsApp, e-mail e centro de ajuda dedicado.</p>
+            </div>
+            <div className="p-4 bg-white rounded-xl shadow">
+              <h4 className="font-semibold">Transparência</h4>
+              <p className="text-sm text-gray-600 mt-2">Relatórios de investimentos e extratos em tempo real.</p>
+            </div>
+          </div>
+        </section>
 
-<Collapsible summary="Changes not showing up on your device?">
+        {/* Right: Registration / CTA */}
+        <aside className="sticky top-6">
+          <div className="bg-white p-6 rounded-2xl shadow">
+            <h3 className="text-xl font-bold">Abra sua conta</h3>
+            <p className="text-sm text-gray-600 mt-1">Registe-se e comece a investir em minutos</p>
 
-Expo Go is configured by default to automatically reload the app whenever a file is changed, but let's make sure to go over the steps to enable it in case somehow things aren't working.
+            <form onSubmit={handleSubscribe} className="mt-4 space-y-3">
+              <div>
+                <label className="text-xs">Nome completo</label>
+                <input value={name} onChange={(e) => setName(e.target.value)} className="w-full mt-1 p-2 rounded-md border" />
+              </div>
+              <div>
+                <label className="text-xs">E-mail</label>
+                <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full mt-1 p-2 rounded-md border" />
+              </div>
+              <div>
+                <label className="text-xs">Telefone</label>
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full mt-1 p-2 rounded-md border" />
+              </div>
 
-- Make sure you have the [development mode enabled in Expo CLI](/workflow/development-mode#development-mode).
-- Close the Expo app and reopen it.
-- Once the app is open again, shake your device to reveal the developer menu. If you are using an emulator, press <kbd>Ctrl</kbd> + <kbd>M</kbd> for Android or <kbd>Cmd ⌘</kbd> + <kbd>D</kbd> for iOS.
-- If you see **Enable Fast Refresh**, press it. If you see **Disable Fast Refresh**, dismiss the developer menu. Now try making another change.
+              <div>
+                <label className="text-xs">Valor a investir (Kz)</label>
+                <input value={amount} onChange={(e) => onAmountChange(e.target.value)} className="w-full mt-1 p-2 rounded-md border" />
+              </div>
 
-  <ContentSpotlight
-    alt="Developer menu in Expo Go app."
-    src="/static/images/get-started/developer-menu.png"
-    className="max-w-[540px]"
-  />
+              <button type="submit" className="w-full bg-indigo-600 text-white p-2 rounded-lg mt-2">Registar e Investir</button>
 
-</Collapsible>
+              {message && <div className="mt-2 text-sm text-green-700">{message}</div>}
+            </form>
 
-</Step>
+            <hr className="my-4" />
 
----
+            <div className="text-xs text-gray-600">
+              <strong>Formas de pagamento:</strong>
+              <ul className="list-disc ml-4 mt-2">
+                <li>Multicaixa</li>
+                <li>Transferência bancária</li>
+                <li>Carteiras digitais (em desenvolvimento)</li>
+              </ul>
+            </div>
+          </div>
 
-## File structure
+          <div className="mt-4 text-sm text-gray-600 bg-white p-4 rounded-xl shadow">
+            <h4 className="font-semibold">Termos rápidos</h4>
+            <p className="mt-2">Os rendimentos anunciados são projeções baseadas em políticas internas. Produto financeiro não garantido por entidades públicas. Consulte contrato.</p>
+          </div>
+        </aside>
+      </main>
 
-Below, you can get familiar with the default project's file structure:
-
-<ProjectStructure />
-
-## Features
-
-The default project template has the following features:
-
-<TemplateFeatures />
+      <footer className="mt-8 bg-white py-6">
+        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="text-sm text-gray-600">© {new Date().getFullYear()} Kwanza Invest — Todos os direitos reservados</div>
+          <div className="text-sm text-gray-600">Contacto: suporte@kwanzainvest.example | +244 9XX XXX XXX</div>
+        </div>
+      </footer>
+    </div>
+  );
+}
